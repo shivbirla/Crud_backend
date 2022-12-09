@@ -3,12 +3,23 @@ package com.nt.model;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinColumns;
+import javax.persistence.JoinTable;
+import javax.persistence.Lob;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
+
+import org.hibernate.annotations.Loader;
+
 
 @Entity
 @Table(name = "employee")
@@ -30,6 +41,17 @@ public class Employee {
 	
 	@Column(name = "hobbies")
 	private String hobbies;
+	
+	@ManyToOne
+	private FileDB file;
+	
+	public FileDB getfile() {
+		return file;
+	}
+
+	public void setfile(FileDB file) {
+		this.file = file;
+	}
 
 	public Long getId() {
 		return Id;
@@ -82,18 +104,8 @@ public class Employee {
 	public Employee() {
 	}
 
-
-
-
-
-
-	@Override
-	public String toString() {
-		return "Employee [Id=" + Id + ", firstName=" + firstName + ", lastName=" + lastName + ", emailId=" + emailId
-				+ ", gender=" + gender + ", hobbies=" + hobbies + "]";
-	}
-
-	public Employee(Long id, String firstName, String lastName, String emailId, String gender, String hobbies) {
+	public Employee(Long id, String firstName, String lastName, String emailId, String gender, String hobbies,
+			FileDB file) {
 		super();
 		Id = id;
 		this.firstName = firstName;
@@ -101,6 +113,16 @@ public class Employee {
 		this.emailId = emailId;
 		this.gender = gender;
 		this.hobbies = hobbies;
+		this.file = file;
+
+	}
+
+
+	
+	@Override
+	public String toString() {
+		return "Employee [Id=" + Id + ", firstName=" + firstName + ", lastName=" + lastName + ", emailId=" + emailId
+				+ ", gender=" + gender + ", hobbies=" + hobbies +  ",file = "+file+"]";
 	}
 
 	
