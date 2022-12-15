@@ -1,12 +1,35 @@
 package com.nt.controller;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
+import javax.annotation.Resource;
+import javax.xml.ws.Response;
+
+import org.apache.tomcat.util.http.fileupload.FileUtils;
+import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.aspectj.util.FileUtil;
 import org.hibernate.jpa.boot.internal.Helper;
+import org.hibernate.query.criteria.internal.expression.function.SubstringFunction;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,12 +45,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nt.exception.ResourceNotFoundException;
+import com.nt.model.Converter;
 import com.nt.model.Employee;
 import com.nt.model.FileDB;
 import com.nt.repository.EmployeeRepository;
 import com.nt.repository.FileDBRepository;
 import com.nt.service.IEmpoyeeService;
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import net.bytebuddy.asm.Advice.Return;
+
 
 @RestController
 @CrossOrigin(origins = "http://localhost:4200")
@@ -44,7 +69,12 @@ public class EmployeeController {
 	@Autowired
 	 private FileDBRepository fileRepo;
 	
+	  @Value("${upload.path}")
+	  private String Fpath;
+	  
+	
 	FileDB filed =null;
+	Employee employee=null;
 
 	@GetMapping("/employees")
 	public List<Employee> getAllEmployee() {
@@ -53,17 +83,15 @@ public class EmployeeController {
 
 	@PostMapping("/employees")
 	public Employee createEmployee(@RequestBody Employee emp) {
-		
+	
 		Employee createEmployee = empService.createEmployee(emp);
-		System.out.println(createEmployee);
-		return createEmployee;
+		return  new Employee();
 	}
 
 	@GetMapping("/employees/{id}")
 	public ResponseEntity<Employee> getEmployeeById(@PathVariable Long id) {
 		Employee employee = empRepo.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Employee Not Found :: " + id));
-		System.out.println(employee);
 		return ResponseEntity.ok(employee);
 	}
 
@@ -88,6 +116,7 @@ public class EmployeeController {
 	public ResponseEntity<Map<String, Boolean>> deleteEmployee(@PathVariable Long id) {
 		Employee employee = empRepo.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Employee not found " + id));
+		employee.getFileData();
 		empRepo.delete(employee);
 		Map<String, Boolean> response = new HashMap<>();
 		response.put("delete", Boolean.TRUE);
@@ -95,18 +124,51 @@ public class EmployeeController {
 	}
 	
 	@PostMapping("/employees/formdata")
-	public ResponseEntity<FileDB> uploadFile(@RequestParam("file") MultipartFile file) throws IOException{
-		
-		 filed 	= new FileDB();
-		filed.setName(file.getOriginalFilename());
-		filed.setData(file.getBytes());
-		filed.setType(file.getContentType());
-				
-         FileDB save = fileRepo.save(filed);
-         System.out.println(save.toString());
-	 	return  ResponseEntity.ok(save);
+	public FileDB uploadFile(@RequestParam("file") MultipartFile file) throws IOException{
+		filed = new FileDB();
+String path= Fpath+File.separator+file.getOriginalFilename();
+
+String type = "";
+
+int i =  file.getOriginalFilename().lastIndexOf('.');
+
+   type = file.getContentType();
+   if (i > 0) {
+	    type =  file.getOriginalFilename().substring(i+1);
+
+	} 
+     
+    String   name=  file.getOriginalFilename().substring(0, file.getOriginalFilename().indexOf("."));
+		 name = name.concat(LocalDateTime.now().toString()).replace("-", "").replace( ":" , "" ).concat("."+type);
+ 
+    	InputStream is = file.getInputStream(); 	
+    	     byte[] data = new byte[is.available()];
+    	     is.read(data);
+    	     FileOutputStream fos = new FileOutputStream(Fpath+File.separator+name);
+    	
+    	     fos.write(data);
+    	 	filed = new  FileDB( name, type); 
+    	 	
+    
+  	filed.setName(name);
+ 	filed.setType(type);
+
+  	return fileRepo.save(filed);
+	 	
 		
 	}
 
+	@GetMapping("/employees/file/{file_id}")
+	public Converter getEmployeeFileById(@PathVariable("file_id") Long file_id) throws IOException {
+		FileDB filed = fileRepo.findById(file_id).orElseThrow(() -> new ResourceNotFoundException("Employee Not found " + file_id));
+		String path= Fpath.concat(filed.getName()) ;		
+		
+		byte[] imageBytes = FileUtil.readAsByteArray(new File(path));
+    
+	     String base64EncodedImageBytes = Base64.getEncoder().encodeToString(imageBytes);
+        
+		return new Converter(base64EncodedImageBytes);
+		
+	}
 	}
 
